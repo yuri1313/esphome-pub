@@ -1,0 +1,131 @@
+substitutions:
+  name: "office-lights"
+  friendly_name: "Office Light Switch"
+  project_name: "lights.office"
+  project_version: "1.1"
+  light_restore_mode: RESTORE_DEFAULT_OFF
+
+esphome:
+  name: "${name}"
+  name_add_mac_suffix: true
+  project:
+    name: "${project_name}"
+    version: "${project_version}"
+
+esp8266:
+  board: esp8285
+  restore_from_flash: true
+
+preferences:
+  flash_write_interval: 1min
+  
+api:
+
+ota:
+  password: !secret ota_password
+
+logger:
+  baud_rate: 0
+
+mdns:
+  disabled: false
+
+web_server:
+  port: 80
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  domain: .amp.dedyn.io
+  ap: 
+    ssid: "office-lights"
+    password: !secret smart_device_password 
+
+captive_portal:
+
+dashboard_import:
+  package_import_url: github://yuri1313/esphome-pub/office-lights.yaml
+
+binary_sensor:
+  - platform: status
+    name: "${friendly_name} Status"
+
+  # Touch Button
+  - platform: gpio
+    pin:
+      inverted: true
+      number: GPIO3
+    name: "${friendly_name} Button"
+    disabled_by_default: true
+    on_multi_click:
+      - timing:
+          - ON for at most 0.5s
+          - OFF for at least 0.2s
+        then:
+          - light.toggle: light1
+      - timing:
+          - ON for at least 4s
+        then:
+          - button.press: Reset
+
+sensor:
+  - platform: uptime
+    name: "${friendly_name} Uptime"
+    disabled_by_default: true
+  - platform: wifi_signal
+    name: "WiFi Signal Sensor"
+    update_interval: 60s
+
+button:
+  - platform: factory_reset
+    name: Restart with Factory Default Settings
+    id: Reset
+
+output:
+  # Relay
+  - platform: gpio
+    pin: GPIO13
+    id: relay1
+
+  # Button LED (1.0 = Blue / 0.0 = Red)
+  - platform: esp8266_pwm
+    pin: GPIO14
+    inverted: true
+    id: button_led1
+
+light:
+  - platform: status_led
+    name: "${friendly_name} Status LED"
+    disabled_by_default: true
+    pin:
+      number: GPIO0
+      inverted: true
+
+  # Relay
+  - platform: binary
+    name: "${friendly_name} Light"
+    id: light1
+    output: relay1
+    restore_mode: ${light_restore_mode}
+    on_turn_on:
+      - light.turn_on: led1
+    on_turn_off:
+      - light.turn_off: led1
+
+  # Button LED
+  - platform: monochromatic
+    name: "${friendly_name} LED"
+    disabled_by_default: true
+    id: led1
+    output: button_led1
+    default_transition_length: 500ms
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "${friendly_name} IP Address"
+      disabled_by_default: true
+     
+time:
+  - platform: sntp
+    id: my_time
