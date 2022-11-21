@@ -20,6 +20,7 @@ preferences:
   flash_write_interval: 1min
   
 api:
+  password: !secret api_password
 
 ota:
   password: !secret ota_password
@@ -73,7 +74,7 @@ binary_sensor:
 
 sensor:
   - platform: uptime
-    name: "${friendly_name} Uptime"
+    name: "${friendly_name} Uptime Seconds"
     id: uptime_sensor
     update_interval: 60s
     on_raw_value:
@@ -103,6 +104,9 @@ button:
   - platform: factory_reset
     name: Restart with Factory Default Settings
     id: Reset
+  - platform: restart
+    name: "Restart node"
+    id: Restart
 
 output:
   # Relay
