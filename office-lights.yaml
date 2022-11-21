@@ -32,6 +32,9 @@ mdns:
 
 web_server:
   port: 80
+  auth:
+    username: !secret web_username
+    password: !secret web_password
 
 wifi:
   ssid: !secret wifi_ssid
@@ -71,7 +74,27 @@ binary_sensor:
 sensor:
   - platform: uptime
     name: "${friendly_name} Uptime"
-    disabled_by_default: true
+    id: uptime_sensor
+    update_interval: 60s
+    on_raw_value:
+      then:
+        - text_sensor.template.publish:
+            id: uptime_human
+            state: !lambda |-
+              int seconds = round(id(uptime_sensor).raw_state);
+              int days = seconds / (24 * 3600);
+              seconds = seconds % (24 * 3600);
+              int hours = seconds / 3600;
+              seconds = seconds % 3600;
+              int minutes = seconds /  60;
+              seconds = seconds % 60;
+              return (
+                (days ? to_string(days) + "d " : "") +
+                (hours ? to_string(hours) + "h " : "") +
+                (minutes ? to_string(minutes) + "m " : "") +
+                (to_string(seconds) + "s")
+              ).c_str();
+
   - platform: wifi_signal
     name: "WiFi Signal Sensor"
     update_interval: 60s
@@ -125,6 +148,12 @@ text_sensor:
     ip_address:
       name: "${friendly_name} IP Address"
       disabled_by_default: true
+  - platform: template
+    name: "${friendly_name} Uptime"
+    id: uptime_human
+    icon: mdi:clock-start
+  - platform: version
+    name: "${friendly_name} ESPHome Version"
      
 time:
   - platform: sntp
