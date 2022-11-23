@@ -172,10 +172,9 @@ text_sensor:
   - platform: template
     name: "Wifi Status"
     id: wifiStatus
-    lambda: |-
-      return {"N/A"};
      
 time:
   - platform: sntp
     id: my_time
+
 
