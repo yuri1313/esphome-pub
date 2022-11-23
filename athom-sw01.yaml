@@ -93,13 +93,23 @@ sensor:
     id: wifiSignal
     name: "WiFi Signal Sensor"
     update_interval: 60s
-
-  - platform: template
-    name: "Wifi Status"
-    lambda: |-
-      return wifiSignal.value <= -67.0 ? "Good" : 
-        (wifiSignal.value > -67.0 && wifiSignal.value <= -70.0) ? "Ok" : 
-        (wifiSignal.value > -70.0) ? "Bad" : "N/A";
+    on_value_range:
+      - above: -67.0
+        then:
+          - text_sensor.template.publish:
+              id: wifiStatus
+              state: "Good"
+      - above: -70.0
+        below: -67.0
+        then:
+          - text_sensor.template.publish:
+              id: wifiStatus
+              state: "Ok"
+      - below: -70.0
+        then:
+          - text_sensor.template.publish:
+              id: wifiStatus
+              state: "Bad"
 
 button:
   - platform: factory_reset
@@ -159,6 +169,11 @@ text_sensor:
     icon: mdi:clock-start
   - platform: version
     name: "${friendly_name} ESPHome Version"
+  - platform: template
+    name: "Wifi Status"
+    id: wifiStatus
+    lambda: |-
+      return {"N/A"};
      
 time:
   - platform: sntp
