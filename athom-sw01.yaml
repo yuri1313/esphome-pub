@@ -98,7 +98,7 @@ sensor:
         - text_sensor.template.publish:
             id: wifi_txt_status
             state: !lambda |- 
-              float signal_rssi = wifiSignal.raw_state;
+              float signal_rssi = id(wifiSignal).raw_state;
               return (
                 (signal_rssi >= -67.0) ? "Good" :
                 (signal_rssi < -67.0 && signal_rssi >= -70.0) ? "Ok" :
@@ -170,4 +170,5 @@ text_sensor:
 time:
   - platform: sntp
     id: my_time
+
 
