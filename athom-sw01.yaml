@@ -97,18 +97,18 @@ sensor:
       - above: -67.0
         then:
           - text_sensor.template.publish:
-              id: wifiStatus
+              id: wifi_txt_status
               state: "Good"
       - above: -70.0
         below: -67.0
         then:
           - text_sensor.template.publish:
-              id: wifiStatus
+              id: wifi_txt_status
               state: "Ok"
       - below: -70.0
         then:
           - text_sensor.template.publish:
-              id: wifiStatus
+              id: wifi_txt_status
               state: "Bad"
 
 button:
@@ -171,10 +171,9 @@ text_sensor:
     name: "${friendly_name} ESPHome Version"
   - platform: template
     name: "Wifi Status"
-    id: wifiStatus
+    id: wifi_txt_status
      
 time:
   - platform: sntp
     id: my_time
-
 
