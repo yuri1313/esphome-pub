@@ -90,8 +90,16 @@ sensor:
               ).c_str();
 
   - platform: wifi_signal
+    id: wifiSignal
     name: "WiFi Signal Sensor"
     update_interval: 60s
+
+  - platform: template
+    name: "Wifi Status"
+    lambda: |-
+      return wifiSignal.value <= -67.0 ? "Good" : 
+        (wifiSignal.value > -67.0 && wifiSignal.value <= -70.0) ? "Ok" : 
+        (wifiSignal.value > -70.0) ? "Bad" : "N/A";
 
 button:
   - platform: factory_reset
