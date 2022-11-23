@@ -93,24 +93,18 @@ sensor:
     id: wifiSignal
     name: "WiFi Signal Sensor"
     update_interval: 60s
-    on_value_range:
-      - above: -67.0
-        then:
-          - text_sensor.template.publish:
-              id: wifi_txt_status
-              state: "Good"
-      - above: -70.0
-        below: -67.0
-        then:
-          - text_sensor.template.publish:
-              id: wifi_txt_status
-              state: "Ok"
-      - below: -70.0
-        then:
-          - text_sensor.template.publish:
-              id: wifi_txt_status
-              state: "Bad"
-
+    on_raw_value:
+      then:
+        - text_sensor.template.publish:
+            id: wifi_txt_status
+            state: !lambda |- 
+              float signal_rssi = wifiSignal.raw_state;
+              return (
+                (signal_rssi >= -67.0) ? "Good" :
+                (signal_rssi < -67.0 && signal_rssi >= -70.0) ? "Ok" :
+                (signal_rssi < -70.0) ? "Bad"
+              ).c_str();
+    
 button:
   - platform: factory_reset
     name: Restart with Factory Default Settings
