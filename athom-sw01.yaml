@@ -36,7 +36,7 @@ wifi:
   domain: .amp.dedyn.io
   ap: 
     ssid: ${ap_ssid}
-    password: #{smart_device_password}
+    password: ${smart_device_password}
 
 captive_portal:
 
