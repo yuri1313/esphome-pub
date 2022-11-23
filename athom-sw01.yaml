@@ -103,7 +103,7 @@ sensor:
                 (signal_rssi >= -67.0) ? "Good" :
                 (signal_rssi < -67.0 && signal_rssi >= -70.0) ? "Ok" :
                 (signal_rssi < -70.0) ? "Bad" : "N/A"
-              ).c_str();
+              );
     
 button:
   - platform: factory_reset
