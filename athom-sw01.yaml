@@ -14,6 +14,8 @@ preferences:
   
 api:
   password: ${api_password}
+  encryption:
+    key: ${api_encryption_key}
 
 ota:
   password: ${ota_password}
@@ -170,5 +172,3 @@ text_sensor:
 time:
   - platform: sntp
     id: my_time
-
-
