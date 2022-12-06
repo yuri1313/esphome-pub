@@ -1,0 +1,211 @@
+esphome:
+  name: "${name}"
+#  name_add_mac_suffix: true
+  project:
+    name: "${project_name}"
+    version: "${project_version}"
+
+esp8266:
+  board: esp8285
+  restore_from_flash: true
+
+preferences:
+  flash_write_interval: 1min
+  
+api:
+  password: ${api_password}
+  encryption:
+    key: ${api_encryption_key}
+
+ota:
+  password: ${ota_password}
+
+logger:
+  baud_rate: 0
+
+mdns:
+  disabled: false
+
+web_server:
+  port: 80
+  auth:
+    username: ${web_username}
+    password: ${web_password}
+
+wifi:
+  ssid: ${wifi_ssid}
+  password: ${wifi_password}
+  domain: .amp.dedyn.io
+  ap: 
+    ssid: ${ap_ssid}
+    password: ${ap_password}
+
+captive_portal:
+
+dashboard_import:
+  package_import_url: github://yuri1313/esphome-pub/athom-sw02.yaml
+
+binary_sensor:
+  - platform: status
+    name: "${friendly_name} Status"
+
+  # Touch Button
+  - platform: gpio
+    pin:
+      inverted: true
+      number: GPIO3
+    name: "${friendly_name} Button 1"
+    disabled_by_default: true
+    on_multi_click:
+      - timing:
+          - ON for at most 0.5s
+          - OFF for at least 0.2s
+        then:
+          - light.toggle: light1
+      - timing:
+          - ON for at least 4s
+        then:
+          - button.press: Reset
+
+  - platform: gpio
+    pin:
+      inverted: true
+      number: GPIO5
+    name: "${friendly_name} Button 2"
+    disabled_by_default: true
+    on_click:
+      max_length: 0.5s
+      then:
+        - light.toggle: light2
+
+sensor:
+  - platform: uptime
+    name: "${friendly_name} Uptime Seconds"
+    id: uptime_sensor
+    update_interval: 60s
+    on_raw_value:
+      then:
+        - text_sensor.template.publish:
+            id: uptime_human
+            state: !lambda |-
+              int seconds = round(id(uptime_sensor).raw_state);
+              int days = seconds / (24 * 3600);
+              seconds = seconds % (24 * 3600);
+              int hours = seconds / 3600;
+              seconds = seconds % 3600;
+              int minutes = seconds /  60;
+              seconds = seconds % 60;
+              return (
+                (days ? to_string(days) + "d " : "") +
+                (hours ? to_string(hours) + "h " : "") +
+                (minutes ? to_string(minutes) + "m " : "") +
+                (to_string(seconds) + "s")
+              ).c_str();
+
+  - platform: wifi_signal
+    id: wifiSignal
+    name: "WiFi Signal Sensor"
+    update_interval: 60s
+    on_raw_value:
+      then:
+        - text_sensor.template.publish:
+            id: wifi_txt_status
+            state: !lambda |- 
+              float signal_rssi = id(wifiSignal).raw_state;
+              return (
+                (signal_rssi >= -67.0) ? "Good" :
+                (signal_rssi < -67.0 && signal_rssi >= -70.0) ? "Ok" :
+                (signal_rssi < -70.0) ? "Bad" : "N/A"
+              );
+    
+button:
+  - platform: factory_reset
+    name: Restart with Factory Default Settings
+    id: Reset
+  - platform: restart
+    name: "Restart node"
+    id: Restart
+
+output:
+  # Relay
+  - platform: gpio
+    pin: GPIO13
+    id: relay1
+
+  - platform: gpio
+    pin: GPIO4
+    id: relay2
+
+  # Button LED (1.0 = Blue / 0.0 = Red)
+  - platform: esp8266_pwm
+    pin: GPIO14
+    inverted: true
+    id: button_led1
+
+  - platform: esp8266_pwm
+    pin: GPIO1
+    inverted: true
+    id: button_led2
+
+light:
+  - platform: status_led
+    name: "${friendly_name} Status LED"
+    disabled_by_default: true
+    pin:
+      number: GPIO0
+      inverted: true
+
+  # Relay
+  - platform: binary
+    name: "${friendly_name} Light 1"
+    id: light1
+    output: relay1
+    restore_mode: ${light1_restore_mode}
+    on_turn_on:
+      - light.turn_on: led1
+    on_turn_off:
+      - light.turn_off: led1
+
+  - platform: binary
+    name: "${friendly_name} Light 2"
+    id: light2
+    output: relay2
+    restore_mode: ${light2_restore_mode}
+    on_turn_on:
+      - light.turn_on: led2
+    on_turn_off:
+      - light.turn_off: led2
+
+  # Button LED
+  - platform: monochromatic
+    name: "${friendly_name} LED 1"
+    disabled_by_default: true
+    id: led1
+    output: button_led1
+    default_transition_length: 500ms
+
+  - platform: monochromatic
+    name: "${friendly_name} LED 2"
+    disabled_by_default: true
+    id: led2
+    output: button_led2
+    default_transition_length: 500ms
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "${friendly_name} IP Address"
+      disabled_by_default: true
+  - platform: template
+    name: "${friendly_name} Uptime"
+    id: uptime_human
+    icon: mdi:clock-start
+  - platform: version
+    name: "${friendly_name} ESPHome Version"
+  - platform: template
+    name: "Wifi Status"
+    id: wifi_txt_status
+     
+time:
+  - platform: sntp
+    id: my_time
