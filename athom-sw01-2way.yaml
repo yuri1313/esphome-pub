@@ -42,7 +42,7 @@ wifi:
 captive_portal:
 
 dashboard_import:
-  package_import_url: github://yuri1313/esphome-pub/athom-sw02.yaml
+  package_import_url: github://yuri1313/esphome-pub/athom-sw01.yaml
 
 binary_sensor:
   - platform: status
@@ -53,7 +53,7 @@ binary_sensor:
     pin:
       inverted: true
       number: GPIO3
-    name: "${friendly_name_1} Button"
+    name: "${friendly_name} Button"
     disabled_by_default: true
     on_multi_click:
       - timing:
@@ -61,21 +61,27 @@ binary_sensor:
           - OFF for at least 0.2s
         then:
           - light.toggle: light1
+          - if:
+              condition:
+                light.is_on: light1
+              then:
+                - homeassistant.service:
+                    service: script.sync_light_value_on
+                    data:
+                      light_name: ${paired_light}
+              else:
+                if:
+                  condition:
+                    light.is_off: light1
+                  then:
+                    - homeassistant.service:
+                        service: script.sync_light_value_off
+                        data:
+                          light_name: ${paired_light}
       - timing:
           - ON for at least 4s
         then:
           - button.press: Reset
-
-  - platform: gpio
-    pin:
-      inverted: true
-      number: GPIO5
-    name: "${friendly_name_2} Button"
-    disabled_by_default: true
-    on_click:
-      max_length: 0.5s
-      then:
-        - light.toggle: light2
 
 sensor:
   - platform: uptime
@@ -131,20 +137,11 @@ output:
     pin: GPIO13
     id: relay1
 
-  - platform: gpio
-    pin: GPIO4
-    id: relay2
-
   # Button LED (1.0 = Blue / 0.0 = Red)
   - platform: esp8266_pwm
     pin: GPIO14
     inverted: true
     id: button_led1
-
-  - platform: esp8266_pwm
-    pin: GPIO1
-    inverted: true
-    id: button_led2
 
 light:
   - platform: status_led
@@ -156,38 +153,21 @@ light:
 
   # Relay
   - platform: binary
-    name: "${friendly_name_1} Light"
+    name: "${friendly_name} Light"
     id: light1
     output: relay1
-    restore_mode: ${light1_restore_mode}
+    restore_mode: ${light_restore_mode}
     on_turn_on:
       - light.turn_on: led1
     on_turn_off:
       - light.turn_off: led1
 
-  - platform: binary
-    name: "${friendly_name_2} Light"
-    id: light2
-    output: relay2
-    restore_mode: ${light2_restore_mode}
-    on_turn_on:
-      - light.turn_on: led2
-    on_turn_off:
-      - light.turn_off: led2
-
   # Button LED
   - platform: monochromatic
-    name: "${friendly_name_1} LED"
+    name: "${friendly_name} LED"
     disabled_by_default: true
     id: led1
     output: button_led1
-    default_transition_length: 500ms
-
-  - platform: monochromatic
-    name: "${friendly_name_2} LED"
-    disabled_by_default: true
-    id: led2
-    output: button_led2
     default_transition_length: 500ms
 
 text_sensor:

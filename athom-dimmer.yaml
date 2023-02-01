@@ -1,0 +1,141 @@
+esphome:
+  name: "${name}"
+#  name_add_mac_suffix: true
+  project:
+    name: "${project_name}"
+    version: "${project_version}"
+
+esp8266:
+  board: esp8285
+  restore_from_flash: true
+  framework:
+    # See https://github.com/espressif/arduino-esp32/releases for available versions
+    version: 3.0.2
+    platform_version: 4.0.1
+
+preferences:
+  flash_write_interval: 1min
+  
+api:
+  encryption:
+    key: ${api_encryption_key}
+
+ota:
+  password: ${ota_password}
+
+# Make sure logging is not using the serial port
+logger:
+  baud_rate: 0
+
+uart:
+  rx_pin: GPIO3
+  tx_pin: GPIO1
+  baud_rate: 9600
+
+# Register the Tuya MCU connection
+tuya:
+  
+mdns:
+  disabled: false
+
+web_server:
+  port: 80
+  auth:
+    username: ${web_username}
+    password: ${web_password}
+
+wifi:
+  ssid: ${wifi_ssid}
+  password: ${wifi_password}
+  domain: .amp.dedyn.io
+  ap: 
+    ssid: ${ap_ssid}
+    password: ${ap_password}
+
+captive_portal:
+
+binary_sensor:
+ - platform: status
+   name: "${friendly_name} Status"
+
+sensor:
+ - platform: uptime
+   name: "${friendly_name} Uptime Seconds"
+   id: uptime_sensor
+   update_interval: 60s
+   on_raw_value:
+     then:
+       - text_sensor.template.publish:
+           id: uptime_human
+           state: !lambda |-
+             int seconds = round(id(uptime_sensor).raw_state);
+             int days = seconds / (24 * 3600);
+             seconds = seconds % (24 * 3600);
+             int hours = seconds / 3600;
+             seconds = seconds % 3600;
+             int minutes = seconds /  60;
+             seconds = seconds % 60;
+             return (
+               (days ? to_string(days) + "d " : "") +
+               (hours ? to_string(hours) + "h " : "") +
+               (minutes ? to_string(minutes) + "m " : "") +
+               (to_string(seconds) + "s")
+             ).c_str();
+
+ - platform: wifi_signal
+   id: wifiSignal
+   name: "WiFi Signal Sensor"
+   update_interval: 60s
+   on_raw_value:
+     then:
+       - text_sensor.template.publish:
+           id: wifi_txt_status
+           state: !lambda |- 
+             float signal_rssi = id(wifiSignal).raw_state;
+             return (
+               (signal_rssi >= -67.0) ? "Good" :
+               (signal_rssi < -67.0 && signal_rssi >= -70.0) ? "Ok" :
+               (signal_rssi < -70.0) ? "Bad" : "N/A"
+             );
+
+button:
+ - platform: factory_reset
+   name: Restart with Factory Default Settings
+   id: Reset
+   disabled_by_default: true
+ - platform: restart
+   name: "Restart node"
+   id: Restart
+   disabled_by_default: true
+ - platform: safe_mode
+   name: "Restart node (Safe Mode)"
+   disabled_by_default: true
+
+text_sensor:
+ - platform: wifi_info
+   ip_address:
+     name: "${friendly_name} IP Address"
+     disabled_by_default: true
+ - platform: template
+   name: "${friendly_name} Uptime"
+   id: uptime_human
+   icon: mdi:clock-start
+ - platform: version
+   name: "${friendly_name} ESPHome Version"
+ - platform: template
+   name: "Wifi Status"
+   id: wifi_txt_status
+
+time:
+ - platform: sntp
+   id: my_time
+
+#Create a light using the dimmer
+light:
+ - platform: "tuya"
+   name: "dim1"
+   dimmer_datapoint: 2
+#   min_value_datapoint: 2
+   switch_datapoint: 1
+   min_value: 10
+   max_value: 1000

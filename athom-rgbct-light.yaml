@@ -1,9 +1,19 @@
+globals:
+  - id: fast_boot
+    type: int
+    restore_value: yes
+    initial_value: '0'
+
 esphome:
   name: "${name}"
 #  name_add_mac_suffix: true
   project:
     name: "${project_name}"
     version: "${project_version}"
+  on_boot:
+    then:
+      - script.execute: fast_boot_script
+
 
 esp8266:
   board: esp8285
@@ -20,7 +30,6 @@ ota:
   password: ${ota_password}
 
 logger:
-  baud_rate: 0
 
 mdns:
   disabled: false
@@ -41,41 +50,9 @@ wifi:
 
 captive_portal:
 
-dashboard_import:
-  package_import_url: github://yuri1313/esphome-pub/athom-sw02.yaml
-
 binary_sensor:
   - platform: status
     name: "${friendly_name} Status"
-
-  # Touch Button
-  - platform: gpio
-    pin:
-      inverted: true
-      number: GPIO3
-    name: "${friendly_name_1} Button"
-    disabled_by_default: true
-    on_multi_click:
-      - timing:
-          - ON for at most 0.5s
-          - OFF for at least 0.2s
-        then:
-          - light.toggle: light1
-      - timing:
-          - ON for at least 4s
-        then:
-          - button.press: Reset
-
-  - platform: gpio
-    pin:
-      inverted: true
-      number: GPIO5
-    name: "${friendly_name_2} Button"
-    disabled_by_default: true
-    on_click:
-      max_length: 0.5s
-      then:
-        - light.toggle: light2
 
 sensor:
   - platform: uptime
@@ -116,7 +93,39 @@ sensor:
                 (signal_rssi < -67.0 && signal_rssi >= -70.0) ? "Ok" :
                 (signal_rssi < -70.0) ? "Bad" : "N/A"
               );
-    
+
+output:
+  - platform: esp8266_pwm
+    id: red_output
+    pin: GPIO4
+  - platform: esp8266_pwm
+    id: green_output
+    pin: GPIO12
+  - platform: esp8266_pwm
+    id: blue_output
+    pin: GPIO14
+  - platform: esp8266_pwm
+    id: white_output
+    pin: GPIO5
+  - platform: esp8266_pwm
+    id: ct_output
+    inverted: true
+    pin: GPIO13
+
+light:
+  - platform: rgbct
+    id: rgbct_light
+    name: "${friendly_name}"
+    restore_mode: ${light_restore_mode}
+    red: red_output
+    green: green_output
+    blue: blue_output
+    white_brightness: white_output
+    color_temperature: ct_output
+    cold_white_color_temperature: 153 mireds
+    warm_white_color_temperature: 500 mireds
+    color_interlock: ${color_interlock}
+
 button:
   - platform: factory_reset
     name: Restart with Factory Default Settings
@@ -125,70 +134,38 @@ button:
     name: "Restart node"
     id: Restart
 
-output:
-  # Relay
-  - platform: gpio
-    pin: GPIO13
-    id: relay1
 
-  - platform: gpio
-    pin: GPIO4
-    id: relay2
-
-  # Button LED (1.0 = Blue / 0.0 = Red)
-  - platform: esp8266_pwm
-    pin: GPIO14
-    inverted: true
-    id: button_led1
-
-  - platform: esp8266_pwm
-    pin: GPIO1
-    inverted: true
-    id: button_led2
-
-light:
-  - platform: status_led
-    name: "${friendly_name} Status LED"
-    disabled_by_default: true
-    pin:
-      number: GPIO0
-      inverted: true
-
-  # Relay
-  - platform: binary
-    name: "${friendly_name_1} Light"
-    id: light1
-    output: relay1
-    restore_mode: ${light1_restore_mode}
-    on_turn_on:
-      - light.turn_on: led1
-    on_turn_off:
-      - light.turn_off: led1
-
-  - platform: binary
-    name: "${friendly_name_2} Light"
-    id: light2
-    output: relay2
-    restore_mode: ${light2_restore_mode}
-    on_turn_on:
-      - light.turn_on: led2
-    on_turn_off:
-      - light.turn_off: led2
-
-  # Button LED
-  - platform: monochromatic
-    name: "${friendly_name_1} LED"
-    disabled_by_default: true
-    id: led1
-    output: button_led1
-    default_transition_length: 500ms
-
-  - platform: monochromatic
-    name: "${friendly_name_2} LED"
-    disabled_by_default: true
-    id: led2
-    output: button_led2
-    default_transition_length: 500ms
+script:
+  - id: fast_boot_script
+    then:
+      - if:
+          condition:
+            lambda: return ( id(fast_boot) >= 3 );
+          then:
+            - lambda: |-
+                ESP_LOGD("athom-rgbct-light.yaml", "Now the counter is greater than or equal to 3, perform reset device and reboot");
+                id(fast_boot) = 0;
+                fast_boot->loop();
+                global_preferences->sync();
+                auto call = id(rgbct_light).turn_on();
+                call.set_transition_length(500);
+                call.set_brightness(1.0);
+                call.set_color_mode(ColorMode::RGB);
+                call.set_rgb(0.0, 0.0, 1.0);
+                call.perform();
+            - delay: 5s
+            - button.press: Reset
+      - lambda: |-
+          id(fast_boot) += 1;
+          fast_boot->loop();
+          global_preferences->sync();
+          ESP_LOGD("athom-rgbct-light.yaml", "Now the counter is %d.  Reset the device when the counter is greater than or equal to 3", id(fast_boot));
+      - delay: 10s
+      - lambda: |-
+          ESP_LOGD("athom-rgbct-light.yaml", "Reset counter");
+          id(fast_boot) = 0;
+          fast_boot->loop();
+          global_preferences->sync();
 
 text_sensor:
   - platform: wifi_info
@@ -204,7 +181,7 @@ text_sensor:
   - platform: template
     name: "Wifi Status"
     id: wifi_txt_status
-     
+
 time:
   - platform: sntp
     id: my_time
